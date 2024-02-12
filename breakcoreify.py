@@ -31,11 +31,11 @@ def randomPattern():
 
     return ret
 
-def getClip(pattern, path, backing):
+def getClip(pattern, path, backingSize):
     maxSize = os.path.getsize(path)
 
     output = np.array([])
-    rate = int(os.path.getsize(backing) / 8)
+    rate = int(backingSize / 4)
     rate -= rate % 2
 
     with open(path, 'rb') as f:
@@ -51,39 +51,85 @@ def getClip(pattern, path, backing):
 
     return output
 
-def infiniteProgression(path, measuresPerPattern, numIters, backing):
-    current = np.zeros(len(getClip(randomPattern(), path, backing)))
+def infiniteProgression(path, measuresPerPattern, numIters, backing=None):
+    if backing == None:
+        backingClip = getClip(randomPattern(), path, 176400)
+    else:
+        with open(backing, 'rb') as f:
+            backingClip = np.frombuffer(f.read(), dtype=np.int16).astype(np.float32)
 
-    with open(backing, 'rb') as f:
-        backingClip = np.frombuffer(f.read(), dtype=np.int16).astype(np.float32)
-
-    backingClipLoop = backingClip
-
-    while len(backingClipLoop) < len(current):
-        backingClipLoop = np.append(backingClipLoop, backingClip)
-
-    backingClipLoop = backingClipLoop[: len(current)]
+    current = np.zeros(len(backingClip))
 
     for i in range(numIters):
         print(f'Progress: {i} / {numIters}')
 
-        current += getClip(randomPattern(), path, backing)
+        current += getClip(randomPattern(), path, len(backingClip))
 
         if max(abs(current)) > 0:
-            current *= max(abs(backingClipLoop)) / max(abs(current))
+            current *= max(abs(backingClip)) / max(abs(current))
             current *= 0.7
 
         for j in range(measuresPerPattern):
-            exportClip(current + backingClipLoop, append=(i > 0))
+            exportClip(current + backingClip, append=(i > 0))
 
 def exportClip(clip, append=False):
     with open('output.pcm', 'ab' if append else 'wb') as f:
         f.write((clip / 10).astype(np.int16).tobytes())
 
+def playClip(clip):
+    exportClip(clip)
+    os.system('paplay --raw --rate 44100 --channels 2 output.pcm')
+
 def main():
+    backingFile = None
+    inputFile = None
+    outputFile = None
+    changes = 64
+    phraseLength = 16
+
+    printHelp = False
+
+    argCount = 0
+
+    for arg in sys.argv[1 :]:
+        if arg.startswith('--in='):
+            inputFile = arg.removeprefix('--in=')
+        elif arg.startswith('--out='):
+            outputFile = arg.removeprefix('--out=')
+        elif arg.startswith('--backing='):
+            backingFile = arg.removeprefix('--backing=')
+        elif arg.startswith('--changes='):
+            try:
+                changes = int(arg.removeprefix('--changes='))
+            except ValueError:
+                print('Not an int: ' + arg.removeprefix('--changes='))
+                printHelp = True
+                break
+        elif arg.startswith('--phrase-length='):
+            try:
+                phraseLength = int(arg.removeprefix('--phrase-length='))
+            except ValueError:
+                print('Not an int: ' + arg.removeprefix('--phrase-length='))
+                printHelp = True
+                break
+        else:
+            print('Invalid arg: ' + arg)
+            printHelp = True
+            break
+
+    if not printHelp and not os.exists(inputFile):
+        printHelp = True
+
+    if not printHelp and not os.exists(outputFile):
+        printHelp = True
+
+    if printHelp:
+        print('Syntax: breakcoreify.py --in=INPUT_FILE.mp3 --out=OUTPUT_FILE.mp3 [--backing=BACKING_FILE.pcm] [--changes=INT] [--phrase-length=INT]')
+
     os.system(f'ffmpeg -y -i "{sys.argv[1]}" -ar 44100 -ac 2 -sample_fmt s16 -f s16le "{sys.argv[1]}.pcm"')
-    infiniteProgression(sys.argv[1] + '.pcm', 16, 64, 'amen-break.pcm')
+    infiniteProgression(sys.argv[1] + '.pcm', phraseLength, changes, backing)
     os.system(f'ffmpeg -y -ar 44100 -ac 2 -sample_fmt s16 -f s16le -i output.pcm "{sys.argv[2]}"')
+    os.system(f'rm "{sys.argv[1]}.pcm" output.pcm')
     os.remove(sys.argv[1] + '.pcm')
     os.remove('output.pcm')
 
