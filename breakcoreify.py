@@ -80,15 +80,12 @@ def exportClip(clip, append=False):
     with open('output.pcm', 'ab' if append else 'wb') as f:
         f.write((clip / 10).astype(np.int16).tobytes())
 
-def playClip(clip):
-    exportClip(clip)
-    os.system('paplay --raw --rate 44100 --channels 2 output.pcm')
-
 def main():
     os.system(f'ffmpeg -y -i "{sys.argv[1]}" -ar 44100 -ac 2 -sample_fmt s16 -f s16le "{sys.argv[1]}.pcm"')
     infiniteProgression(sys.argv[1] + '.pcm', 16, 64, 'amen-break.pcm')
     os.system(f'ffmpeg -y -ar 44100 -ac 2 -sample_fmt s16 -f s16le -i output.pcm "{sys.argv[2]}"')
-    os.system(f'rm "{sys.argv[1]}.pcm" output.pcm')
+    os.remove(sys.argv[1] + '.pcm')
+    os.remove('output.pcm')
 
 if __name__ == '__main__':
     main()
