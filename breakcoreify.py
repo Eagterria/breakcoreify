@@ -51,7 +51,7 @@ def getClip(pattern, path, backingSize):
 
     return output
 
-def infiniteProgression(path, measuresPerPattern, numIters, backing=None):
+def infiniteProgression(path, outputPath, measuresPerPattern, numIters, backing=None):
     if backing == None:
         backingClip = getClip(randomPattern(), path, 176400)
     else:
@@ -70,10 +70,10 @@ def infiniteProgression(path, measuresPerPattern, numIters, backing=None):
             current *= 0.7
 
         for j in range(measuresPerPattern):
-            exportClip(current + backingClip, append=(i > 0))
+            exportClip(current + backingClip, outputPath, append=(i > 0))
 
-def exportClip(clip, append=False):
-    with open('output.pcm', 'ab' if append else 'wb') as f:
+def exportClip(clip, path, append=False):
+    with open(path, 'ab' if append else 'wb') as f:
         f.write((clip / 10).astype(np.int16).tobytes())
 
 def playClip(clip):
@@ -117,21 +117,36 @@ def main():
             printHelp = True
             break
 
-    if not printHelp and not os.exists(inputFile):
+    if not printHelp and inputFile == None:
+        print('Missing argument: --in=INPUT_FILE')
         printHelp = True
 
-    if not printHelp and not os.exists(outputFile):
+    if not printHelp and outputFile == None:
+        print('Missing argument: --out=OUTPUT_FILE')
+        printHelp = True
+
+    if not printHelp and not os.path.exists(inputFile):
+        print('File does not exist: ' + inputFile)
+        printHelp = True
+
+    if not printHelp and backingFile != None and not os.path.exists(backingFile):
+        print('File does not exist: ' + backingFile)
         printHelp = True
 
     if printHelp:
         print('Syntax: breakcoreify.py --in=INPUT_FILE.mp3 --out=OUTPUT_FILE.mp3 [--backing=BACKING_FILE.pcm] [--changes=INT] [--phrase-length=INT]')
+        return
+    
+    os.system(f'ffmpeg -y -i "{inputFile}" -ar 44100 -ac 2 -sample_fmt s16 -f s16le "{inputFile}.pcm"')
+    os.system(f'ffmpeg -y -i "{backingFile}" -ar 44100 -ac 2 -sample_fmt s16 -f s16le "{backingFile}.pcm"')
+    infiniteProgression(inputFile + '.pcm', outputFile + '.pcm', phraseLength, changes, backingFile if backingFile == None else backingFile + '.pcm')
+    os.system(f'ffmpeg -y -ar 44100 -ac 2 -sample_fmt s16 -f s16le -i "{outputFile}.pcm" "{outputFile}"')
 
-    os.system(f'ffmpeg -y -i "{sys.argv[1]}" -ar 44100 -ac 2 -sample_fmt s16 -f s16le "{sys.argv[1]}.pcm"')
-    infiniteProgression(sys.argv[1] + '.pcm', phraseLength, changes, backing)
-    os.system(f'ffmpeg -y -ar 44100 -ac 2 -sample_fmt s16 -f s16le -i output.pcm "{sys.argv[2]}"')
-    os.system(f'rm "{sys.argv[1]}.pcm" output.pcm')
-    os.remove(sys.argv[1] + '.pcm')
-    os.remove('output.pcm')
+    for path in [inputFile + '.pcm', outputFile + '.pcm', backingFile + '.pcm']:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
 if __name__ == '__main__':
     main()
