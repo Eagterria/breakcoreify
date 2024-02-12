@@ -11,11 +11,14 @@ Turns any song into endless breakcore.
 ## Usage
 
 ```bash
-python3 breakcore.py INPUT_FILE.mp3 OUTPUT_FILE.mp3
+python3 breakcoreify.py --in=INPUT_FILE.mp3 --out=OUTPUT_FILE.mp3 [--backing=BACKING_FILE.pcm] [--changes=INT] [--phrase-length=INT]
 ```
 
-* INPUT_FILE.mp3: Any local song in audio form that you want to convert into breakcore.
-* OUTPUT_FILE.mp3: The outputted audio file path.
+* --in=INPUT_FILE.mp3: Any local song in audio form that you want to convert into breakcore.
+* --out=OUTPUT_FILE.mp3: The outputted audio file path.
+* --backing=BACKING_FILE.pcm: The track to be played on loop throughout the song (usually drums) in 44.1 Hz stereo 16-bit signed int format (OPTIONAL, recommend "amen-break.pcm").
+* --changes=INT: The total number of times that the song alters itself (OPTIONAL).
+* --phrase-length=INT: The number of loops it takes before a song alteration happens (OPTIONAL).
 
 ## Disclaimer
 
