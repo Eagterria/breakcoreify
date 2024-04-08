@@ -70,7 +70,7 @@ def infiniteProgression(path, outputPath, measuresPerPattern, numIters, backing=
             current *= 0.7
 
         for j in range(measuresPerPattern):
-            exportClip(current + backingClip, outputPath, append=(i > 0))
+            exportClip(current + backingClip, outputPath, append=(i > 0 or j > 0))
 
 def exportClip(clip, path, append=False):
     with open(path, 'ab' if append else 'wb') as f:
